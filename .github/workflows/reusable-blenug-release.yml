@@ -50,6 +50,7 @@ jobs:
       uses: gittools/actions/gitversion/execute@v0.9.15
       with:
         useConfigFile: true
+        configFilePath: DariuszGarbarz/Tools/blob/master/GitVersion.yml
     
     - name: Build
       run: dotnet build -c Release --no-restore . -p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
