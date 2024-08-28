@@ -56,7 +56,7 @@ jobs:
         useConfigFile: true
     
     - name: Build
-      run: dotnet build -c Release --no-restore -p:Version=$GitVersion_SemVer . -p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
+      run: dotnet build -c Release --property OutputPath=${{ github.workspace }}/Build --no-restore -p:Version=$GitVersion_SemVer . -p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
     
     - name: Test
       run: dotnet test -c Release --no-build --verbosity normal .
@@ -64,5 +64,5 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        path: Build
+        path: Build/*
         retention-days: 2
