@@ -18,6 +18,14 @@ jobs:
       contents: read
 
     steps:
+    - name: Prepare
+      run: echo "NUGET_URL=https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" >> $GITHUB_ENV
+
+    - id: lower-repo
+      name: Repository to lowercase
+      run: |
+        echo "REPOSITORY_LOWERCASE=${GITHUB_REPOSITORY@L}" >> $GITHUB_ENV
+      
     - name: Checkout repository
       uses: actions/checkout@v3
       with:
@@ -65,8 +73,10 @@ jobs:
         username: ${{ secrets.BLE_USERNAME }}
         password: ${{ secrets.BLE_ACCESS_TOKEN }}
 
-    - name: Publish and push the container image
-      run: dotnet publish --version ${{ env.GitVersion_SemVer }} -c Release /p:PublishProfile=github
+    - name: 'Build Inventory Image'
+      run: |
+        docker build . --tag ghcr.io/${{ env.REPOSITORY_LOWERCASE }}:latest --build-arg NUGET_USERNAME=${{ secrets.BLE_USERNAME }} --build-arg NUGET_PASSWORD=${{ secrets.BLE_USERNAME }}
+        docker push ghcr.io/${{ env.REPOSITORY_LOWERCASE }}:latest
 
     - name: Tag the commit
       run: git tag -f v$GitVersion_SemVer
