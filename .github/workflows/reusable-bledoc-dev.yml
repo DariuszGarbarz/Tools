@@ -28,6 +28,11 @@ jobs:
         token: ${{ secrets.BLE_ACCESS_TOKEN }}
         fetch-depth: 0
 
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        global-json-file: global.json
+
     - name: Add NuGet source
       run: |
         dotnet nuget add source "${{ env.NUGET_URL }}" \
@@ -35,11 +40,6 @@ jobs:
           --password "${{ secrets.BLE_ACCESS_TOKEN }}" \
           --store-password-in-clear-text \
           --name github
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        global-json-file: global.json
 
     - name: Restore dependencies
       run: dotnet restore .
@@ -61,11 +61,8 @@ jobs:
     - name: Test
       run: dotnet test -c Release --no-build --verbosity normal .
 
-    - name: Pack
-      run: dotnet pack -c Release --no-build -p:Version=$GitVersion_SemVer --verbosity normal .
-
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        path: Build/*.nupkg
-        retention-days: 5
+        path: Build
+        retention-days: 2

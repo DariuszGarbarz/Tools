@@ -1,4 +1,4 @@
-name: 'Build dev stage'
+name: 'Release'
 
 on:
   workflow_call:
@@ -7,26 +7,28 @@ on:
         required: false
         default: ubuntu-22.04
         type: string
-    outputs:
-      version:
-        value: ${{ jobs.build.outputs.version }}
 
 jobs:
-  build:
+  publish:
     runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 10
-    outputs:
-      version: ${{ steps.versionOutput.outputs.version }}
+
+    permissions:
+      packages: write
+      contents: read
 
     steps:
-    - name: Prepare
-      run: echo "NUGET_URL=https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" >> $GITHUB_ENV
-
     - name: Checkout repository
       uses: actions/checkout@v3
       with:
         token: ${{ secrets.BLE_ACCESS_TOKEN }}
+        submodules: true
         fetch-depth: 0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        global-json-file: global.json
 
     - name: Add NuGet source
       run: |
@@ -35,11 +37,6 @@ jobs:
           --password "${{ secrets.BLE_ACCESS_TOKEN }}" \
           --store-password-in-clear-text \
           --name github
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        global-json-file: global.json
 
     - name: Restore dependencies
       run: dotnet restore .
@@ -56,16 +53,23 @@ jobs:
         useConfigFile: true
     
     - name: Build
-      run: dotnet build -c Release --no-restore -p:Version=$GitVersion_SemVer . -p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
+      run: dotnet build -c Release --no-restore . -p:RepositoryUrl=${{ github.server_url }}/${{ github.repository }}
     
     - name: Test
       run: dotnet test -c Release --no-build --verbosity normal .
 
-    - name: Pack
-      run: dotnet pack -c Release --no-build -p:Version=$GitVersion_SemVer --verbosity normal .
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
       with:
-        path: Build/*.nupkg
-        retention-days: 5
+        registry: ghcr.io
+        username: ${{ secrets.BLE_USERNAME }}
+        password: ${{ secrets.BLE_ACCESS_TOKEN }}
+
+    - name: Publish and push the container image
+      run: dotnet publish --version ${{ env.GitVersion_SemVer }} -c Release /p:PublishProfile=github
+
+    - name: Tag the commit
+      run: git tag -f v$GitVersion_SemVer
+
+    - name: Push the tag
+      run: git push -f --tags
